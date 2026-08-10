@@ -1,15 +1,37 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
-const initialTodos = [
-  { id: 1, title: 'Learn React state', completed: false },
-  { id: 2, title: 'Connect the FastAPI backend', completed: false },
-];
+const API_URL = 'http://127.0.0.1:8001';
 
 function App() {
-  const [todos, setTodos] = useState(initialTodos);
+  const [todos, setTodos] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
   const [title, setTitle] = useState('');
 
-  function handleSubmit(event) {
+  useEffect(() => {
+    async function loadTodos() {
+      try {
+        setIsLoading(true);
+
+        const response = await fetch(`${API_URL}/todos`);
+
+        if (!response.ok) {
+          throw new Error('Could not load todos');
+        }
+
+        const data = await response.json();
+        setTodos(data);
+      } catch (loadError) {
+        setError(loadError.message);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadTodos();
+  }, []);
+
+  async function handleSubmit(event) {
     event.preventDefault();
 
     const trimmedTitle = title.trim();
@@ -18,14 +40,28 @@ function App() {
       return;
     }
 
-    const newTodo = {
-      id: crypto.randomUUID(),
-      title: trimmedTitle,
-      completed: false,
-    };
+    try {
+      setError('');
 
-    setTodos([...todos, newTodo]);
-    setTitle('');
+      const response = await fetch(`${API_URL}/todos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: trimmedTitle,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Could not create todo');
+      }
+
+      const newTodo = await response.json();
+
+      setTodos((currentTodos) => [...currentTodos, newTodo]);
+      setTitle('');
+    } catch (createError) {
+      setError(createError.message);
+    }
   }
 
   function toggleTodo(todoId) {
@@ -86,6 +122,16 @@ function App() {
           </button>
         </form>
 
+        {error && (
+          <p className='mb-6 text-[#a13d2d]' role='alert'>
+            {error}
+          </p>
+        )}
+        {isLoading && (
+          <p className='py-12 text-center font-serif italic'>
+            Opening the ledger…
+          </p>
+        )}
         <ul className='divide-y divide-[#24221e]/20'>
           {todos.map((todo, index) => (
             <li className='group flex items-center gap-4 py-5' key={todo.id}>
@@ -126,7 +172,7 @@ function App() {
           ))}
         </ul>
 
-        {todos.length === 0 && (
+        {!isLoading && todos.length === 0 && (
           <p className='py-16 text-center font-serif text-xl italic text-[#777166]'>
             The page is clear.
           </p>
