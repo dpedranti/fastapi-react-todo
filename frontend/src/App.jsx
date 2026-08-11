@@ -94,8 +94,24 @@ function App() {
     }
   }
 
-  function deleteTodo(todoId) {
-    setTodos(todos.filter((todo) => todo.id !== todoId));
+  async function deleteTodo(todoId) {
+    try {
+      setError('');
+
+      const response = await fetch(`${API_URL}/todos/${todoId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Could not delete todo');
+      }
+
+      setTodos((currentTodos) =>
+        currentTodos.filter((todo) => todo.id !== todoId),
+      );
+    } catch (deleteError) {
+      setError(deleteError.message);
+    }
   }
 
   const remainingCount = todos.filter((todo) => !todo.completed).length;
