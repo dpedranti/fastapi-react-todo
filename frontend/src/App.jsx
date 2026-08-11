@@ -64,12 +64,34 @@ function App() {
     }
   }
 
-  function toggleTodo(todoId) {
-    setTodos(
-      todos.map((todo) =>
-        todo.id === todoId ? { ...todo, completed: !todo.completed } : todo,
-      ),
-    );
+  async function toggleTodo(todoToUpdate) {
+    try {
+      setError('');
+
+      const response = await fetch(`${API_URL}/todos/${todoToUpdate.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          completed: !todoToUpdate.completed,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Could not update todo');
+      }
+
+      const updatedTodo = await response.json();
+
+      setTodos((currentTodos) =>
+        currentTodos.map((todo) =>
+          todo.id === updatedTodo.id ? updatedTodo : todo,
+        ),
+      );
+    } catch (updateError) {
+      setError(updateError.message);
+    }
   }
 
   function deleteTodo(todoId) {
@@ -146,7 +168,7 @@ function App() {
                 className={`h-5 w-5 shrink-0 border border-[#24221e] ${
                   todo.completed ? 'bg-[#a13d2d]' : 'bg-transparent'
                 }`}
-                onClick={() => toggleTodo(todo.id)}
+                onClick={() => toggleTodo(todo)}
                 type='button'
               />
 
