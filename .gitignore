@@ -16,3 +16,8 @@ dist/
 .vscode/
 .idea/
 .DS_Store
+
+# Local databases
+*.db
+*.db-shim
+*.db-wal

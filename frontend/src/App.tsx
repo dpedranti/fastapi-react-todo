@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type SubmitEvent } from 'react';
+import type { Todo, TodoCreate, TodoUpdate } from './types';
 
 const API_URL = 'http://127.0.0.1:8001';
 
 function App() {
-  const [todos, setTodos] = useState([]);
+  const [todos, setTodos] = useState<Todo[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [title, setTitle] = useState('');
@@ -19,10 +20,10 @@ function App() {
           throw new Error('Could not load todos');
         }
 
-        const data = await response.json();
+        const data: Todo[] = await response.json();
         setTodos(data);
       } catch (loadError) {
-        setError(loadError.message);
+        setError(getErrorMessage(loadError));
       } finally {
         setIsLoading(false);
       }
@@ -31,7 +32,7 @@ function App() {
     loadTodos();
   }, []);
 
-  async function handleSubmit(event) {
+  async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const trimmedTitle = title.trim();
@@ -43,46 +44,50 @@ function App() {
     try {
       setError('');
 
+      const todoToCreate: TodoCreate = {
+        title: trimmedTitle,
+      };
+
       const response = await fetch(`${API_URL}/todos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: trimmedTitle,
-        }),
+        body: JSON.stringify(todoToCreate),
       });
 
       if (!response.ok) {
         throw new Error('Could not create todo');
       }
 
-      const newTodo = await response.json();
+      const newTodo: Todo = await response.json();
 
       setTodos((currentTodos) => [...currentTodos, newTodo]);
       setTitle('');
     } catch (createError) {
-      setError(createError.message);
+      setError(getErrorMessage(createError));
     }
   }
 
-  async function toggleTodo(todoToUpdate) {
+  async function toggleTodo(todoToUpdate: Todo) {
     try {
       setError('');
+
+      const todoUpdate: TodoUpdate = {
+        completed: !todoToUpdate.completed,
+      };
 
       const response = await fetch(`${API_URL}/todos/${todoToUpdate.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          completed: !todoToUpdate.completed,
-        }),
+        body: JSON.stringify(todoUpdate),
       });
 
       if (!response.ok) {
         throw new Error('Could not update todo');
       }
 
-      const updatedTodo = await response.json();
+      const updatedTodo: Todo = await response.json();
 
       setTodos((currentTodos) =>
         currentTodos.map((todo) =>
@@ -90,11 +95,11 @@ function App() {
         ),
       );
     } catch (updateError) {
-      setError(updateError.message);
+      setError(getErrorMessage(updateError));
     }
   }
 
-  async function deleteTodo(todoId) {
+  async function deleteTodo(todoId: number) {
     try {
       setError('');
 
@@ -110,7 +115,7 @@ function App() {
         currentTodos.filter((todo) => todo.id !== todoId),
       );
     } catch (deleteError) {
-      setError(deleteError.message);
+      setError(getErrorMessage(deleteError));
     }
   }
 
@@ -221,3 +226,7 @@ function App() {
 }
 
 export default App;
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Something went wrong';
+}
