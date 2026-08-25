@@ -1,10 +1,11 @@
 from collections.abc import Generator
+from pathlib import Path
 
-from sqlmodel import Session, SQLModel, create_engine
+from models import Todo
+from sqlmodel import Session, create_engine
 
-import models
-
-DATABASE_URL = "sqlite:///./todos.db"
+DATABASE_FILE = Path(__file__).resolve().parent / "todos.db"
+DATABASE_URL = f"sqlite:///{DATABASE_FILE}"
 
 engine = create_engine(
     DATABASE_URL,
@@ -13,7 +14,7 @@ engine = create_engine(
 
 
 def create_db_and_tables():
-    SQLModel.metadata.create_all(engine)
+    Todo.metadata.create_all(engine)
 
 
 def get_session() -> Generator[Session, None, None]:

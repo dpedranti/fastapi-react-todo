@@ -1,8 +1,23 @@
-from fastapi import FastAPI, HTTPException, Response, status
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from contextlib import asynccontextmanager
+from typing import Annotated
 
-app = FastAPI()
+from fastapi import Depends, FastAPI, HTTPException, Response, status
+from fastapi.middleware.cors import CORSMiddleware
+from sqlmodel import Session, select
+
+from database import create_db_and_tables, get_session
+from models import Todo, TodoCreate, TodoPublic, TodoUpdate
+
+SessionDep = Annotated[Session, Depends(get_session)]
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    create_db_and_tables()
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -15,73 +30,63 @@ app.add_middleware(
 )
 
 
-class TodoCreate(BaseModel):
-    title: str
-
-
-class TodoUpdate(BaseModel):
-    title: str | None = None
-    completed: bool | None = None
-
-
-class Todo(BaseModel):
-    id: int
-    title: str
-    completed: bool = False
-
-
-todos: list[Todo] = []
-
-
 @app.get("/")
 def read_root():
     return {"message": "Todo API is running"}
 
 
-@app.get("/todos", response_model=list[Todo])
-def get_todos():
-    return todos
+@app.get("/todos", response_model=list[TodoPublic])
+def get_todos(session: SessionDep):
+    return session.exec(select(Todo)).all()
 
 
 @app.post(
     "/todos",
-    response_model=Todo,
+    response_model=TodoPublic,
     status_code=status.HTTP_201_CREATED,
 )
-def create_todo(todo_data: TodoCreate):
-    next_id = max((todo.id for todo in todos), default=0) + 1
+def create_todo(todo_data: TodoCreate, session: SessionDep):
+    todo = Todo.model_validate(todo_data)
 
-    todo = Todo(
-        id=next_id,
-        title=todo_data.title,
-    )
-    todos.append(todo)
+    session.add(todo)
+    session.commit()
+    session.refresh(todo)
+
     return todo
 
 
-@app.patch("/todos/{todo_id}", response_model=Todo)
-def update_todo(todo_id: int, todo_data: TodoUpdate):
-    for todo in todos:
-        if todo.id == todo_id:
-            if todo_data.title is not None:
-                todo.title = todo_data.title
+@app.patch("/todos/{todo_id}", response_model=TodoPublic)
+def update_todo(
+    todo_id: int,
+    todo_data: TodoUpdate,
+    session: SessionDep,
+):
+    todo = session.get(Todo, todo_id)
 
-            if todo_data.completed is not None:
-                todo.completed = todo_data.completed
+    if todo is None:
+        raise HTTPException(status_code=404, detail="Todo not found")
 
-            return todo
+    updates = todo_data.model_dump(exclude_unset=True)
+    todo.sqlmodel_update(updates)
 
-    raise HTTPException(status_code=404, detail="Todo not found")
+    session.add(todo)
+    session.commit()
+    session.refresh(todo)
+
+    return todo
 
 
 @app.delete(
     "/todos/{todo_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-def delete_todo(todo_id: int):
-    for index, todo in enumerate(todos):
-        if todo.id == todo_id:
-            todos.pop(index)
-            return Response(status_code=status.HTTP_204_NO_CONTENT)
+def delete_todo(todo_id: int, session: SessionDep):
+    todo = session.get(Todo, todo_id)
 
-    raise HTTPException(status_code=404, detail="Todo not found")
+    if todo is None:
+        raise HTTPException(status_code=404, detail="Todo not found")
+
+    session.delete(todo)
+    session.commit()
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
