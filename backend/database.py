@@ -1,8 +1,9 @@
 from collections.abc import Generator
 from pathlib import Path
 
-from models import Todo
 from sqlmodel import Session, create_engine
+
+from .models import Todo
 
 DATABASE_FILE = Path(__file__).resolve().parent / "todos.db"
 DATABASE_URL = f"sqlite:///{DATABASE_FILE}"

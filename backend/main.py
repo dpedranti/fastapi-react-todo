@@ -5,8 +5,8 @@ from fastapi import Depends, FastAPI, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, select
 
-from database import create_db_and_tables, get_session
-from models import Todo, TodoCreate, TodoPublic, TodoUpdate
+from .database import create_db_and_tables, get_session
+from .models import Todo, TodoCreate, TodoPublic, TodoUpdate
 
 SessionDep = Annotated[Session, Depends(get_session)]
 
