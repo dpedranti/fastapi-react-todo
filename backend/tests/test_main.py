@@ -50,7 +50,7 @@ def test_create_todo(client):
     }
 
 
-def test_update_todo(client):
+def test_update_todo_completion(client):
     created_response = client.post(
         "/todos",
         json={"title": "Write a test"},
@@ -64,6 +64,42 @@ def test_update_todo(client):
 
     assert response.status_code == 200
     assert response.json()["completed"] is True
+
+
+def test_update_todo_title(client):
+    created_response = client.post(
+        "/todos",
+        json={"title": "Write some code"},
+    )
+    todo_id = created_response.json()["id"]
+
+    response = client.patch(
+        f"/todos/{todo_id}",
+        json={"title": "Write tested code"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "id": todo_id,
+        "title": "Write tested code",
+        "completed": False,
+    }
+
+
+def test_update_todo_rejects_empty_title(client):
+    created_response = client.post(
+        "/todos",
+        json={"title": "Keep this title"},
+    )
+    todo_id = created_response.json()["id"]
+
+    response = client.patch(
+        f"/todos/{todo_id}",
+        json={"title": ""},
+    )
+
+    assert response.status_code == 422
+    assert client.get("/todos").json()[0]["title"] == "Keep this title"
 
 
 def test_delete_todo(client):

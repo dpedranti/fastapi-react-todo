@@ -1,26 +1,21 @@
 import { useEffect, useState, type SubmitEvent } from 'react';
-import type { Todo, TodoCreate, TodoUpdate } from './types';
-
-const API_URL = 'http://127.0.0.1:8001';
+import { createTodo, deleteTodo, getTodos, updateTodo } from './api';
+import type { Todo } from './types';
 
 function App() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [title, setTitle] = useState('');
+  const [editingTodoId, setEditingTodoId] = useState<number | null>(null);
+  const [editTitle, setEditTitle] = useState('');
 
   useEffect(() => {
     async function loadTodos() {
       try {
         setIsLoading(true);
 
-        const response = await fetch(`${API_URL}/todos`);
-
-        if (!response.ok) {
-          throw new Error('Could not load todos');
-        }
-
-        const data: Todo[] = await response.json();
+        const data = await getTodos();
         setTodos(data);
       } catch (loadError) {
         setError(getErrorMessage(loadError));
@@ -44,21 +39,9 @@ function App() {
     try {
       setError('');
 
-      const todoToCreate: TodoCreate = {
+      const newTodo = await createTodo({
         title: trimmedTitle,
-      };
-
-      const response = await fetch(`${API_URL}/todos`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(todoToCreate),
       });
-
-      if (!response.ok) {
-        throw new Error('Could not create todo');
-      }
-
-      const newTodo: Todo = await response.json();
 
       setTodos((currentTodos) => [...currentTodos, newTodo]);
       setTitle('');
@@ -71,23 +54,9 @@ function App() {
     try {
       setError('');
 
-      const todoUpdate: TodoUpdate = {
+      const updatedTodo = await updateTodo(todoToUpdate.id, {
         completed: !todoToUpdate.completed,
-      };
-
-      const response = await fetch(`${API_URL}/todos/${todoToUpdate.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(todoUpdate),
       });
-
-      if (!response.ok) {
-        throw new Error('Could not update todo');
-      }
-
-      const updatedTodo: Todo = await response.json();
 
       setTodos((currentTodos) =>
         currentTodos.map((todo) =>
@@ -99,17 +68,54 @@ function App() {
     }
   }
 
-  async function deleteTodo(todoId: number) {
+  function startEditing(todo: Todo) {
+    setEditingTodoId(todo.id);
+    setEditTitle(todo.title);
+    setError('');
+  }
+
+  function cancelEditing() {
+    setEditingTodoId(null);
+    setEditTitle('');
+  }
+
+  async function saveTodoTitle(
+    event: SubmitEvent<HTMLFormElement>,
+    todoId: number,
+  ) {
+    event.preventDefault();
+
+    const trimmedTitle = editTitle.trim();
+
+    if (!trimmedTitle) {
+      setError('A todo needs a title');
+      return;
+    }
+
     try {
       setError('');
 
-      const response = await fetch(`${API_URL}/todos/${todoId}`, {
-        method: 'DELETE',
+      const updatedTodo = await updateTodo(todoId, {
+        title: trimmedTitle,
       });
 
-      if (!response.ok) {
-        throw new Error('Could not delete todo');
-      }
+      setTodos((currentTodos) =>
+        currentTodos.map((todo) =>
+          todo.id === updatedTodo.id ? updatedTodo : todo,
+        ),
+      );
+
+      cancelEditing();
+    } catch (updateError) {
+      setError(getErrorMessage(updateError));
+    }
+  }
+
+  async function handleDeleteTodo(todoId: number) {
+    try {
+      setError('');
+
+      await deleteTodo(todoId);
 
       setTodos((currentTodos) =>
         currentTodos.filter((todo) => todo.id !== todoId),
@@ -193,24 +199,76 @@ function App() {
                 type='button'
               />
 
-              <span
-                className={`flex-1 font-serif text-xl ${
-                  todo.completed
-                    ? 'text-[#777166] line-through'
-                    : 'text-[#24221e]'
-                }`}
-              >
-                {todo.title}
-              </span>
+              {editingTodoId === todo.id ? (
+                <form
+                  className='flex min-w-0 flex-1 items-center gap-2'
+                  onSubmit={(event) => saveTodoTitle(event, todo.id)}
+                >
+                  <label className='sr-only' htmlFor={`edit-todo-${todo.id}`}>
+                    Edit {todo.title}
+                  </label>
 
-              <button
-                aria-label={`Delete ${todo.title}`}
-                className='font-mono text-xs uppercase tracking-wider text-[#777166] opacity-0 transition-opacity hover:text-[#a13d2d] group-hover:opacity-100 focus:opacity-100'
-                onClick={() => deleteTodo(todo.id)}
-                type='button'
-              >
-                Remove
-              </button>
+                  <input
+                    autoFocus
+                    className='min-w-0 flex-1 border-b border-[#a13d2d] bg-transparent font-serif text-xl outline-none'
+                    id={`edit-todo-${todo.id}`}
+                    onChange={(event) => setEditTitle(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Escape') {
+                        cancelEditing();
+                      }
+                    }}
+                    value={editTitle}
+                  />
+
+                  <button
+                    className='font-mono text-xs uppercase tracking-wider text-[#a13d2d]'
+                    type='submit'
+                  >
+                    Save
+                  </button>
+
+                  <button
+                    className='font-mono text-xs uppercase tracking-wider text-[#777166]'
+                    onClick={cancelEditing}
+                    type='button'
+                  >
+                    Cancel
+                  </button>
+                </form>
+              ) : (
+                <span
+                  className={`min-w-0 flex-1 font-serif text-xl ${
+                    todo.completed
+                      ? 'text-[#777166] line-through'
+                      : 'text-[#24221e]'
+                  }`}
+                >
+                  {todo.title}
+                </span>
+              )}
+
+              {editingTodoId !== todo.id && (
+                <button
+                  aria-label={`Edit ${todo.title}`}
+                  className='font-mono text-xs uppercase tracking-wider text-[#777166] opacity-0 transition-opacity hover:text-[#a13d2d] group-hover:opacity-100 focus:opacity-100'
+                  onClick={() => startEditing(todo)}
+                  type='button'
+                >
+                  Edit
+                </button>
+              )}
+
+              {editingTodoId !== todo.id && (
+                <button
+                  aria-label={`Delete ${todo.title}`}
+                  className='font-mono text-xs uppercase tracking-wider text-[#777166] opacity-0 transition-opacity hover:text-[#a13d2d] group-hover:opacity-100 focus:opacity-100'
+                  onClick={() => handleDeleteTodo(todo.id)}
+                  type='button'
+                >
+                  Remove
+                </button>
+              )}
             </li>
           ))}
         </ul>
