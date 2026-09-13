@@ -79,12 +79,7 @@ function App() {
     setEditTitle('');
   }
 
-  async function saveTodoTitle(
-    event: SubmitEvent<HTMLFormElement>,
-    todoId: number,
-  ) {
-    event.preventDefault();
-
+  async function saveTodoTitle(todoId: number) {
     const trimmedTitle = editTitle.trim();
 
     if (!trimmedTitle) {
@@ -202,7 +197,10 @@ function App() {
               {editingTodoId === todo.id ? (
                 <form
                   className='flex min-w-0 flex-1 items-center gap-2'
-                  onSubmit={(event) => saveTodoTitle(event, todo.id)}
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    saveTodoTitle(todo.id);
+                  }}
                 >
                   <label className='sr-only' htmlFor={`edit-todo-${todo.id}`}>
                     Edit {todo.title}
