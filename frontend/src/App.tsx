@@ -1,6 +1,7 @@
 import { useEffect, useState, type SubmitEvent } from 'react';
 import { createTodo, deleteTodo, getTodos, updateTodo } from './api';
 import type { Todo } from './types';
+import TodoItem from './TodoItem';
 
 function App() {
   const [todos, setTodos] = useState<Todo[]>([]);
@@ -178,96 +179,19 @@ function App() {
         )}
         <ul className='divide-y divide-[#24221e]/20'>
           {todos.map((todo, index) => (
-            <li className='group flex items-center gap-4 py-5' key={todo.id}>
-              <span className='w-7 font-mono text-xs text-[#777166]'>
-                {String(index + 1).padStart(2, '0')}
-              </span>
-
-              <button
-                aria-label={`Mark ${todo.title} as ${
-                  todo.completed ? 'incomplete' : 'complete'
-                }`}
-                className={`h-5 w-5 shrink-0 border border-[#24221e] ${
-                  todo.completed ? 'bg-[#a13d2d]' : 'bg-transparent'
-                }`}
-                onClick={() => toggleTodo(todo)}
-                type='button'
-              />
-
-              {editingTodoId === todo.id ? (
-                <form
-                  className='flex min-w-0 flex-1 items-center gap-2'
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    saveTodoTitle(todo.id);
-                  }}
-                >
-                  <label className='sr-only' htmlFor={`edit-todo-${todo.id}`}>
-                    Edit {todo.title}
-                  </label>
-
-                  <input
-                    autoFocus
-                    className='min-w-0 flex-1 border-b border-[#a13d2d] bg-transparent font-serif text-xl outline-none'
-                    id={`edit-todo-${todo.id}`}
-                    onChange={(event) => setEditTitle(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Escape') {
-                        cancelEditing();
-                      }
-                    }}
-                    value={editTitle}
-                  />
-
-                  <button
-                    className='font-mono text-xs uppercase tracking-wider text-[#a13d2d]'
-                    type='submit'
-                  >
-                    Save
-                  </button>
-
-                  <button
-                    className='font-mono text-xs uppercase tracking-wider text-[#777166]'
-                    onClick={cancelEditing}
-                    type='button'
-                  >
-                    Cancel
-                  </button>
-                </form>
-              ) : (
-                <span
-                  className={`min-w-0 flex-1 font-serif text-xl ${
-                    todo.completed
-                      ? 'text-[#777166] line-through'
-                      : 'text-[#24221e]'
-                  }`}
-                >
-                  {todo.title}
-                </span>
-              )}
-
-              {editingTodoId !== todo.id && (
-                <button
-                  aria-label={`Edit ${todo.title}`}
-                  className='font-mono text-xs uppercase tracking-wider text-[#777166] opacity-0 transition-opacity hover:text-[#a13d2d] group-hover:opacity-100 focus:opacity-100'
-                  onClick={() => startEditing(todo)}
-                  type='button'
-                >
-                  Edit
-                </button>
-              )}
-
-              {editingTodoId !== todo.id && (
-                <button
-                  aria-label={`Delete ${todo.title}`}
-                  className='font-mono text-xs uppercase tracking-wider text-[#777166] opacity-0 transition-opacity hover:text-[#a13d2d] group-hover:opacity-100 focus:opacity-100'
-                  onClick={() => handleDeleteTodo(todo.id)}
-                  type='button'
-                >
-                  Remove
-                </button>
-              )}
-            </li>
+            <TodoItem
+              editTitle={editTitle}
+              index={index}
+              isEditing={editingTodoId === todo.id}
+              key={todo.id}
+              onCancelEditing={cancelEditing}
+              onDelete={handleDeleteTodo}
+              onEditTitleChange={setEditTitle}
+              onSaveTitle={saveTodoTitle}
+              onStartEditing={startEditing}
+              onToggle={toggleTodo}
+              todo={todo}
+            />
           ))}
         </ul>
 
