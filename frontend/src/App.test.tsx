@@ -57,6 +57,40 @@ describe('App', () => {
     expect(screen.getByText('0 open')).toBeInTheDocument();
   });
 
+  it('marks a todo as complete', async () => {
+    const user = userEvent.setup();
+
+    vi.mocked(api.getTodos).mockResolvedValue([
+      {
+        id: 4,
+        title: 'Test completion',
+        completed: false,
+      },
+    ]);
+
+    vi.mocked(api.updateTodo).mockResolvedValue({
+      id: 4,
+      title: 'Test completion',
+      completed: true,
+    });
+
+    render(<App />);
+
+    const toggleButton = await screen.findByRole('button', {
+      name: 'Mark Test completion as complete',
+    });
+
+    expect(toggleButton).toHaveAttribute('aria-pressed', 'false');
+
+    await user.click(toggleButton);
+
+    const completedToggle = screen.getByRole('button', {
+      name: 'Mark Test completion as incomplete',
+    });
+
+    expect(completedToggle).toHaveAttribute('aria-pressed', 'true');
+  });
+
   it('shows an error when todos cannot be loaded', async () => {
     vi.mocked(api.getTodos).mockRejectedValue(
       new Error('Could not load todos'),

@@ -35,6 +35,7 @@ function TodoItem({
         aria-label={`Mark ${todo.title} as ${
           todo.completed ? 'incomplete' : 'complete'
         }`}
+        aria-pressed={todo.completed}
         className={`h-5 w-5 shrink-0 border border-[#24221e] ${
           todo.completed ? 'bg-[#a13d2d]' : 'bg-transparent'
         }`}
