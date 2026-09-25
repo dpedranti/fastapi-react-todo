@@ -3,6 +3,8 @@ import { createTodo, deleteTodo, getTodos, updateTodo } from './api';
 import type { Todo } from './types';
 import TodoItem from './TodoItem';
 
+type TodoFilter = 'all' | 'open' | 'completed';
+
 function App() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -10,6 +12,7 @@ function App() {
   const [title, setTitle] = useState('');
   const [editingTodoId, setEditingTodoId] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState('');
+  const [filter, setFilter] = useState<TodoFilter>('all');
 
   useEffect(() => {
     async function loadTodos() {
@@ -121,6 +124,18 @@ function App() {
     }
   }
 
+  const visibleTodos = todos.filter((todo) => {
+    if (filter === 'open') {
+      return !todo.completed;
+    }
+
+    if (filter === 'completed') {
+      return todo.completed;
+    }
+
+    return true;
+  });
+
   const remainingCount = todos.filter((todo) => !todo.completed).length;
 
   return (
@@ -167,6 +182,28 @@ function App() {
           </button>
         </form>
 
+        <div
+          aria-label='Filter Todos'
+          className='mb-8 flex gap-1 font-mono text-xs uppercase tracking-wider'
+          role='group'
+        >
+          {(['all', 'open', 'completed'] as const).map((option) => (
+            <button
+              aria-pressed={filter === option}
+              className={`border border-[#24221e] px-3 py-2 transition-colors ${
+                filter === option
+                  ? 'bg-[#24221e] text-[#eee9de]'
+                  : 'bg-transparent text-[#777166] hover:text-[#24221e]'
+              }`}
+              key={option}
+              onClick={() => setFilter(option)}
+              type='button'
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+
         {error && (
           <p className='mb-6 text-[#a13d2d]' role='alert'>
             {error}
@@ -178,7 +215,7 @@ function App() {
           </p>
         )}
         <ul className='divide-y divide-[#24221e]/20'>
-          {todos.map((todo, index) => (
+          {visibleTodos.map((todo, index) => (
             <TodoItem
               editTitle={editTitle}
               index={index}
@@ -195,9 +232,9 @@ function App() {
           ))}
         </ul>
 
-        {!isLoading && todos.length === 0 && (
+        {!isLoading && visibleTodos.length === 0 && (
           <p className='py-16 text-center font-serif text-xl italic text-[#777166]'>
-            The page is clear.
+            {filter === 'all' ? 'The page is clear.' : `No ${filter} todos.`}
           </p>
         )}
       </section>
