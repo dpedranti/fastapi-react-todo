@@ -141,4 +141,72 @@ describe('App', () => {
     expect(api.updateTodo).not.toHaveBeenCalled();
     expect(editInput).toBeInTheDocument();
   });
+
+  it('filters todos by completion status', async () => {
+    const user = userEvent.setup();
+
+    vi.mocked(api.getTodos).mockResolvedValue([
+      {
+        id: 10,
+        title: 'Still open',
+        completed: false,
+      },
+      {
+        id: 11,
+        title: 'Already finished',
+        completed: true,
+      },
+    ]);
+
+    render(<App />);
+
+    expect(await screen.findByText('Still open')).toBeInTheDocument();
+    expect(screen.getByText('Already finished')).toBeInTheDocument();
+
+    const openFilter = screen.getByRole('button', {
+      name: /^open$/i,
+    });
+
+    await user.click(openFilter);
+
+    expect(openFilter).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText('Still open')).toBeInTheDocument();
+    expect(screen.queryByText('Already finished')).not.toBeInTheDocument();
+
+    const completedFilter = screen.getByRole('button', {
+      name: /^completed$/i,
+    });
+
+    await user.click(completedFilter);
+
+    expect(completedFilter).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByText('Still open')).not.toBeInTheDocument();
+    expect(screen.getByText('Already finished')).toBeInTheDocument();
+  });
+
+  it('shows an empty message for a filter with no matching todos', async () => {
+    const user = userEvent.setup();
+
+    vi.mocked(api.getTodos).mockResolvedValue([
+      {
+        id: 12,
+        title: 'Finished already',
+        completed: true,
+      },
+    ]);
+
+    render(<App />);
+
+    expect(await screen.findByText('Finished already')).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', {
+        name: /^open$/i,
+      }),
+    );
+
+    expect(screen.queryByText('Finished already')).not.toBeInTheDocument();
+    expect(screen.getByText('No open todos.')).toBeInTheDocument();
+    expect(screen.queryByText('The page is clear.')).not.toBeInTheDocument();
+  });
 });
