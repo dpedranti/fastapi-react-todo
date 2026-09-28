@@ -124,3 +124,40 @@ def test_missing_todo_returns_404(client):
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Todo not found"}
+
+
+def test_create_todo_rejects_whitespace_title(client):
+    response = client.post(
+        "/todos",
+        json={"title": "   "},
+    )
+
+    assert response.status_code == 422
+    assert client.get("/todos").json() == []
+
+
+def test_create_todo_trims_title_whitespace(client):
+    response = client.post(
+        "/todos",
+        json={"title": "  Buy milk  "},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["title"] == "Buy milk"
+
+
+def test_update_todo_trims_title_whitespace(client):
+    created_response = client.post(
+        "/todos",
+        json={"title": "Original title"},
+    )
+    todo_id = created_response.json()["id"]
+
+    response = client.patch(
+        f"/todos/{todo_id}",
+        json={"title": "  Updated title  "},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["title"] == "Updated title"
+    assert client.get("/todos").json()[0]["title"] == "Updated title"
