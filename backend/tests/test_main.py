@@ -161,3 +161,19 @@ def test_update_todo_trims_title_whitespace(client):
     assert response.status_code == 200
     assert response.json()["title"] == "Updated title"
     assert client.get("/todos").json()[0]["title"] == "Updated title"
+
+
+def test_update_todo_rejects_whitespace_title(client):
+    created_response = client.post(
+        "/todos",
+        json={"title": "Keep this title"},
+    )
+    todo_id = created_response.json()["id"]
+
+    response = client.patch(
+        f"/todos/{todo_id}",
+        json={"title": "   "},
+    )
+
+    assert response.status_code == 422
+    assert client.get("/todos").json()[0]["title"] == "Keep this title"
